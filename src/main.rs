@@ -1,8 +1,13 @@
-use std::{collections::HashMap, thread, time::Duration};
+mod patterns;
+mod primitives;
+
+use crate::patterns::create_initial_patterns_map;
+use crate::primitives::{Board, Coordinate, InitialPattern};
+use std::{thread, time::Duration};
 
 /// The board size needs to be an odd number because the initial pattern
 /// requires a center cell from which to calculate its offsets.
-const BOARD_SIZE: usize = 5;
+const BOARD_SIZE: usize = 15;
 
 /// The number of times the main loop should iterate to update and render the
 /// game state.
@@ -11,31 +16,25 @@ const RENDER_ITERATIONS: usize = 20;
 /// The time to wait between each render.
 const WAIT_TIME: Duration = Duration::from_millis(400);
 
-type Board = Vec<Vec<bool>>;
-
-#[derive(Debug)]
-struct Coordinate {
-    x: isize,
-    y: isize,
-}
-
-#[derive(Eq, Hash, PartialEq)]
-enum InitialPattern {
-    Blinker,
+fn clear_screen() {
+    print!("\x1B[2J\x1B[1;1H");
 }
 
 fn main() {
-    assert_uneven_and_greater_than_one(&BOARD_SIZE);
+    validate_board_size(&BOARD_SIZE);
 
-    let mut board = create_board(BOARD_SIZE, InitialPattern::Blinker);
+    let mut board = create_board(BOARD_SIZE, InitialPattern::Pulsar);
     let mut render_count: usize = 0;
 
     draw_board(&board);
 
     while render_count < RENDER_ITERATIONS {
-        clearscreen::clear().unwrap();
-
+        // We need an immutable clone of the board because the state of each
+        // cell must be calculated from the initial board state during each
+        // iteration of the main loop.
         let immutable_board_clone = board.clone();
+
+        clear_screen();
 
         for y in 0..BOARD_SIZE {
             for x in 0..BOARD_SIZE {
@@ -63,7 +62,7 @@ fn change_state(cell: &mut bool, alive_neighbours: usize) {
     };
 }
 
-fn assert_uneven_and_greater_than_one(number: &usize) {
+fn validate_board_size(number: &usize) {
     assert!(number > &1, "Board size should be greater than 1");
     assert!(number % &2 != 0, "Board size should be an odd number");
 }
@@ -90,21 +89,6 @@ fn check_alive_neighbours(coordinate: Coordinate, board: &Board) -> usize {
         .count();
 
     return alive_neighbours;
-}
-
-fn create_initial_patterns_map() -> HashMap<InitialPattern, Vec<Coordinate>> {
-    let mut initial_patterns: HashMap<InitialPattern, Vec<Coordinate>> = HashMap::new();
-
-    initial_patterns.insert(
-        InitialPattern::Blinker,
-        vec![
-            Coordinate { x: 0, y: 0 },
-            Coordinate { x: 1, y: 0 },
-            Coordinate { x: -1, y: 0 },
-        ],
-    );
-
-    return initial_patterns;
 }
 
 fn create_neighbour_coordinates(coordinate: Coordinate) -> Vec<Coordinate> {
@@ -144,7 +128,7 @@ fn create_board(board_size: usize, initial_pattern: InitialPattern) -> Board {
 
     let center: f32 = (board_size as f32 / 2.0).ceil();
 
-    for coordinate in &create_initial_patterns_map()[&initial_pattern] {
+    for coordinate in &create_initial_patterns_map()[initial_pattern] {
         let x = (center + coordinate.x as f32 - 1 as f32) as usize;
         let y = (center + coordinate.y as f32 - 1 as f32) as usize;
 
@@ -158,9 +142,9 @@ fn draw_board(board: &Board) {
     for row in board {
         for cell in row {
             if *cell == true {
-                print!("X");
-            } else {
                 print!("O");
+            } else {
+                print!(" ");
             }
         }
         println!();

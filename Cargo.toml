@@ -7,4 +7,4 @@ edition = "2021"
 
 [dependencies]
 watch = "0.2.3"
-clearscreen = "2.0.1"
+enum-map = "2.6.1"
