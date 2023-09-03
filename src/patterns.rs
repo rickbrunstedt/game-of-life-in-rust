@@ -1,7 +1,7 @@
 use crate::primitives::{Coordinate, InitialPattern};
 use enum_map::{enum_map, EnumMap};
 
-pub fn create_initial_patterns_map() -> EnumMap<InitialPattern, Vec<Coordinate>> {
+pub fn create_patterns_map() -> EnumMap<InitialPattern, Vec<Coordinate>> {
     return enum_map! {
         InitialPattern::Blinker => vec![
             Coordinate { x: 0, y: 0 },

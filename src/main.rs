@@ -1,14 +1,14 @@
 mod patterns;
 mod primitives;
 
-use crate::patterns::create_initial_patterns_map;
+use crate::patterns::create_patterns_map;
 use crate::primitives::{Args, Board, Coordinate, InitialPattern};
 use clap::Parser;
 use std::{thread, time::Duration};
 
 /// The board size needs to be an odd number because the initial pattern
 /// requires a center cell from which to calculate its offsets.
-const BOARD_SIZE: usize = 15;
+pub const BOARD_SIZE: usize = 15;
 
 /// The number of times the main loop should iterate to update and render the
 /// game state.
@@ -27,9 +27,8 @@ fn main() {
     draw_board(&board);
 
     while render_count < RENDER_ITERATIONS {
-        // We need an immutable clone of the board because the state of each
-        // cell must be calculated from the initial board state during each
-        // iteration of the main loop.
+        // Needed because the state of each cell must be calculated from the
+        // initial board state during each iteration.
         let immutable_board_clone = board.clone();
 
         clear_screen();
@@ -82,9 +81,7 @@ fn check_alive_neighbours(coordinate: Coordinate, board: &Board) -> usize {
 }
 
 fn create_neighbour_coordinates(coordinate: Coordinate) -> Vec<Coordinate> {
-    let mut result: Vec<Coordinate> = vec![];
-
-    let relative_offsets: [(isize, isize); 8] = [
+    let relative_offsets = [
         (-1, -1),
         (0, -1),
         (1, -1),
@@ -95,33 +92,22 @@ fn create_neighbour_coordinates(coordinate: Coordinate) -> Vec<Coordinate> {
         (-1, 0),
     ];
 
-    for offset in relative_offsets {
-        result.push(Coordinate {
-            x: coordinate.x + offset.0,
-            y: coordinate.y + offset.1,
+    return relative_offsets
+        .iter()
+        .map(|&(dx, dy)| Coordinate {
+            x: coordinate.x + dx,
+            y: coordinate.y + dy,
         })
-    }
-
-    return result;
+        .collect();
 }
 
 fn create_board(board_size: usize, initial_pattern: InitialPattern) -> Board {
-    let mut board = Vec::new();
+    let mut board: [[bool; BOARD_SIZE]; BOARD_SIZE] = [[false; BOARD_SIZE]; BOARD_SIZE];
+    let center = (board_size as f32 / 2.0).ceil();
 
-    for _ in 0..board_size {
-        let mut inner_vec = Vec::new();
-        for _ in 0..board_size {
-            inner_vec.push(false);
-        }
-        board.push(inner_vec);
-    }
-
-    let center: f32 = (board_size as f32 / 2.0).ceil();
-
-    for coordinate in &create_initial_patterns_map()[initial_pattern] {
-        let x = (center + coordinate.x as f32 - 1 as f32) as usize;
-        let y = (center + coordinate.y as f32 - 1 as f32) as usize;
-
+    for coordinate in &create_patterns_map()[initial_pattern] {
+        let x = (center + coordinate.x as f32 - 1.0) as usize;
+        let y = (center + coordinate.y as f32 - 1.0) as usize;
         board[y][x] = true;
     }
 
