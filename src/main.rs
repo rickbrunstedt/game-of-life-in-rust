@@ -2,7 +2,8 @@ mod patterns;
 mod primitives;
 
 use crate::patterns::create_initial_patterns_map;
-use crate::primitives::{Board, Coordinate, InitialPattern};
+use crate::primitives::{Args, Board, Coordinate, InitialPattern};
+use clap::Parser;
 use std::{thread, time::Duration};
 
 /// The board size needs to be an odd number because the initial pattern
@@ -14,16 +15,13 @@ const BOARD_SIZE: usize = 15;
 const RENDER_ITERATIONS: usize = 20;
 
 /// The time to wait between each render.
-const WAIT_TIME: Duration = Duration::from_millis(400);
-
-fn clear_screen() {
-    print!("\x1B[2J\x1B[1;1H");
-}
+const WAIT_TIME: Duration = Duration::from_millis(500);
 
 fn main() {
     validate_board_size(&BOARD_SIZE);
+    let initial_pattern = Args::parse().pattern;
 
-    let mut board = create_board(BOARD_SIZE, InitialPattern::Pulsar);
+    let mut board = create_board(BOARD_SIZE, initial_pattern);
     let mut render_count: usize = 0;
 
     draw_board(&board);
@@ -54,6 +52,10 @@ fn main() {
     }
 }
 
+fn clear_screen() {
+    print!("\x1B[2J\x1B[1;1H");
+}
+
 fn change_state(cell: &mut bool, alive_neighbours: usize) {
     *cell = match (*cell, alive_neighbours) {
         (true, 2) | (true, 3) => true,
@@ -68,27 +70,15 @@ fn validate_board_size(number: &usize) {
 }
 
 fn check_alive_neighbours(coordinate: Coordinate, board: &Board) -> usize {
-    let neighbour_coordinates = create_neighbour_coordinates(coordinate);
-
-    let alive_neighbours: usize = neighbour_coordinates
+    create_neighbour_coordinates(coordinate)
         .iter()
-        .filter_map(|coordinate| {
-            board
-                .get(coordinate.y as usize)
-                .and_then(|row| row.get(coordinate.x as usize))
-                .and_then(
-                    |&cell_value| {
-                        if cell_value {
-                            Some(cell_value)
-                        } else {
-                            None
-                        }
-                    },
-                )
+        .filter(|&coord| {
+            *board
+                .get(coord.y as usize)
+                .and_then(|row| row.get(coord.x as usize))
+                .unwrap_or(&false)
         })
-        .count();
-
-    return alive_neighbours;
+        .count()
 }
 
 fn create_neighbour_coordinates(coordinate: Coordinate) -> Vec<Coordinate> {
@@ -139,15 +129,10 @@ fn create_board(board_size: usize, initial_pattern: InitialPattern) -> Board {
 }
 
 fn draw_board(board: &Board) {
-    for row in board {
-        for cell in row {
-            if *cell == true {
-                print!("O");
-            } else {
-                print!(" ");
-            }
+    for row in board.iter() {
+        for &cell in row.iter() {
+            print!("{}", if cell { "O" } else { " " });
         }
         println!();
     }
-    println!();
 }

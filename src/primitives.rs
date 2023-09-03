@@ -1,3 +1,4 @@
+use clap::{Parser, ValueEnum};
 use enum_map::Enum;
 
 pub type Board = Vec<Vec<bool>>;
@@ -8,9 +9,17 @@ pub struct Coordinate {
     pub y: isize,
 }
 
-#[derive(Eq, Hash, PartialEq, Enum)]
+#[derive(Debug, Eq, Hash, Clone, PartialEq, Enum, ValueEnum)]
 pub enum InitialPattern {
-    Blinker,
     Beacon,
+    Blinker,
     Pulsar,
+}
+
+/// Conway's Game of Life
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+pub struct Args {
+    #[arg(short, long, value_enum)]
+    pub pattern: InitialPattern,
 }
