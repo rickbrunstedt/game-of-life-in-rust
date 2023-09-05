@@ -4,6 +4,7 @@ mod primitives;
 use crate::patterns::create_patterns_map;
 use crate::primitives::{Args, Board, Coordinate, InitialPattern};
 use clap::Parser;
+use clearscreen;
 use std::{thread, time::Duration};
 
 /// The board size needs to be an odd number because the initial pattern
@@ -27,11 +28,11 @@ fn main() {
     draw_board(&board);
 
     while render_count < RENDER_ITERATIONS {
+        render_count += 1;
+
         // Needed because the state of each cell must be calculated from the
         // initial board state during each iteration.
         let immutable_board_clone = board.clone();
-
-        clear_screen();
 
         for y in 0..BOARD_SIZE {
             for x in 0..BOARD_SIZE {
@@ -45,14 +46,16 @@ fn main() {
             }
         }
 
+        clear_screen();
+
         draw_board(&board);
-        render_count += 1;
+
         thread::sleep(WAIT_TIME);
     }
 }
 
 fn clear_screen() {
-    print!("\x1B[2J\x1B[1;1H");
+    clearscreen::clear().expect("failed to clear screen");
 }
 
 fn change_state(cell: &mut bool, alive_neighbours: usize) {
