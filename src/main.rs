@@ -1,7 +1,7 @@
-mod patterns;
+mod initial_patterns;
 mod primitives;
 
-use crate::patterns::create_patterns_map;
+use crate::initial_patterns::create_patterns_map;
 use crate::primitives::{Args, Board, Coordinate, InitialPattern};
 use clap::Parser;
 use clearscreen;
@@ -30,8 +30,8 @@ fn main() {
     while render_count < RENDER_ITERATIONS {
         render_count += 1;
 
-        // Needed because the state of each cell must be calculated from the
-        // initial board state during each iteration.
+        // Needed because the state of each cell must be calculated from each
+        // iterations initial board state.
         let immutable_board_clone = board.clone();
 
         for y in 0..BOARD_SIZE {
@@ -55,7 +55,7 @@ fn main() {
 }
 
 fn clear_screen() {
-    clearscreen::clear().expect("failed to clear screen");
+    clearscreen::clear().expect("Failed to clear screen");
 }
 
 fn change_state(cell: &mut bool, alive_neighbours: usize) {
