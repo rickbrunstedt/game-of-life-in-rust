@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 watch = "0.2.3"
+enum-map = "2.6.1"
+clap = { version = "4.4.2", features = ["derive"] }
+clearscreen = "2.0.1"

@@ -1,165 +1,127 @@
+mod initial_patterns;
+mod primitives;
+
+use crate::initial_patterns::create_patterns_map;
+use crate::primitives::{Args, Board, Coordinate, InitialPattern};
+use clap::Parser;
+use clearscreen;
+use std::{thread, time::Duration};
+
+/// The board size needs to be an odd number because the initial pattern
+/// requires a center cell from which to calculate its offsets.
+pub const BOARD_SIZE: usize = 15;
+
+/// The number of times the main loop should iterate to update and render the
+/// game state.
+const RENDER_ITERATIONS: usize = 20;
+
+/// The time to wait between each render.
+const WAIT_TIME: Duration = Duration::from_millis(500);
+
 fn main() {
-    let mut board = create_board();
-    board = set_initial_state(board);
-    draw_board(board);
-    let theone = board[2][1];
+    validate_board_size(&BOARD_SIZE);
+    let initial_pattern = Args::parse().pattern;
 
-    // dbg!(theone.alive);
-    // dbg!(theone.alive);
-    // assert!(board[2][3].alive == false);
-    dbg!(board[2][1]);
-    theone.check_and_change_state(Coordinate { x: 2, y: 1 }, &board);
-    dbg!(board[2][1]);
-    // dbg!(theone.alive);
-    //assert!(board[2][3].alive == true);
-}
+    let mut board = create_board(BOARD_SIZE, initial_pattern);
+    let mut render_count: usize = 0;
 
-const BOARD_SIZE: usize = 5;
-type Board = [[Cell; 5]; 5];
+    draw_board(&board);
 
-#[derive(Copy, Clone, PartialEq, Debug)]
-struct Cell {
-    alive: bool,
-}
+    while render_count < RENDER_ITERATIONS {
+        render_count += 1;
 
-struct Coordinate {
-    x: usize,
-    y: usize,
-}
+        // Needed because the state of each cell must be calculated from each
+        // iterations initial board state.
+        let immutable_board_clone = board.clone();
 
-impl Cell {
-    fn check_and_change_state(mut self, coordinate: Coordinate, board: &Board) {
-        let neighbours: Vec<bool> = vec![
-            || -> bool {
-                let row = board.get(coordinate.x - 1);
-                if row.is_none() {
-                    return false;
-                }
-                let cell = row.unwrap().get(coordinate.y - 1);
-                if cell.is_none() {
-                    return false;
-                }
-                return cell.unwrap().alive;
-            }(),
-            || -> bool {
-                let row = board.get(coordinate.x - 1);
-                if row.is_none() {
-                    return false;
-                }
-                let cell = row.unwrap().get(coordinate.y);
-                if cell.is_none() {
-                    return false;
-                }
-                return cell.unwrap().alive;
-            }(),
-            || -> bool {
-                let row = board.get(coordinate.x - 1);
-                if row.is_none() {
-                    return false;
-                }
-                let cell = row.unwrap().get(coordinate.y + 1);
-                if cell.is_none() {
-                    return false;
-                }
-                return cell.unwrap().alive;
-            }(),
-            || -> bool {
-                let row = board.get(coordinate.x);
-                if row.is_none() {
-                    return false;
-                }
-                let cell = row.unwrap().get(coordinate.y - 1);
-                if cell.is_none() {
-                    return false;
-                }
-                return cell.unwrap().alive;
-            }(),
-            || -> bool {
-                let row = board.get(coordinate.x);
-                if row.is_none() {
-                    return false;
-                }
-                let cell = row.unwrap().get(coordinate.y + 1);
-                if cell.is_none() {
-                    return false;
-                }
-                return cell.unwrap().alive;
-            }(),
-            || -> bool {
-                let row = board.get(coordinate.x + 1);
-                if row.is_none() {
-                    return false;
-                }
-                let cell = row.unwrap().get(coordinate.y - 1);
-                if cell.is_none() {
-                    return false;
-                }
-                return cell.unwrap().alive;
-            }(),
-            || -> bool {
-                let row = board.get(coordinate.x + 1);
-                if row.is_none() {
-                    return false;
-                }
-                let cell = row.unwrap().get(coordinate.y);
-                if cell.is_none() {
-                    return false;
-                }
-                return cell.unwrap().alive;
-            }(),
-            || -> bool {
-                let row = board.get(coordinate.x + 1);
-                if row.is_none() {
-                    return false;
-                }
-                let cell = row.unwrap().get(coordinate.y + 1);
-                if cell.is_none() {
-                    return false;
-                }
-                return cell.unwrap().alive;
-            }(),
-        ];
-        dbg!(&neighbours);
+        for y in 0..BOARD_SIZE {
+            for x in 0..BOARD_SIZE {
+                let x = x as isize;
+                let y = y as isize;
 
-        let alive_neighbours = neighbours.iter().filter(|val| **val).count();
-        if self.alive {
-            if alive_neighbours > 2 || alive_neighbours < 3 {
-                self.alive = false;
-            } else {
-                self.alive = true;
-            }
-        } else {
-            if alive_neighbours == 3 {
-                self.alive = true;
-            } else {
-                self.alive = false;
+                let alive_neighbours =
+                    check_alive_neighbours(Coordinate { x, y }, &immutable_board_clone);
+
+                change_state(&mut board[y as usize][x as usize], alive_neighbours);
             }
         }
-        dbg!(self.alive);
+
+        clear_screen();
+
+        draw_board(&board);
+
+        thread::sleep(WAIT_TIME);
     }
 }
 
-fn create_board() -> Board {
-    return [[Cell { alive: false }; BOARD_SIZE]; BOARD_SIZE];
+fn clear_screen() {
+    clearscreen::clear().expect("Failed to clear screen");
 }
 
-fn draw_board(board: Board) {
-    for row in board {
-        for col in row {
-            if col.alive {
-                print!("X");
-            } else {
-                print!("_");
-            }
+fn change_state(cell: &mut bool, alive_neighbours: usize) {
+    *cell = match (*cell, alive_neighbours) {
+        (true, 2) | (true, 3) => true,
+        (false, 3) => true,
+        _ => false,
+    };
+}
+
+fn validate_board_size(number: &usize) {
+    assert!(number > &1, "Board size should be greater than 1");
+    assert!(number % &2 != 0, "Board size should be an odd number");
+}
+
+fn check_alive_neighbours(coordinate: Coordinate, board: &Board) -> usize {
+    create_neighbour_coordinates(coordinate)
+        .iter()
+        .filter(|&coord| {
+            *board
+                .get(coord.y as usize)
+                .and_then(|row| row.get(coord.x as usize))
+                .unwrap_or(&false)
+        })
+        .count()
+}
+
+fn create_neighbour_coordinates(coordinate: Coordinate) -> Vec<Coordinate> {
+    let relative_offsets = [
+        (-1, -1),
+        (0, -1),
+        (1, -1),
+        (1, 0),
+        (1, 1),
+        (0, 1),
+        (-1, 1),
+        (-1, 0),
+    ];
+
+    return relative_offsets
+        .iter()
+        .map(|&(dx, dy)| Coordinate {
+            x: coordinate.x + dx,
+            y: coordinate.y + dy,
+        })
+        .collect();
+}
+
+fn create_board(board_size: usize, initial_pattern: InitialPattern) -> Board {
+    let mut board: [[bool; BOARD_SIZE]; BOARD_SIZE] = [[false; BOARD_SIZE]; BOARD_SIZE];
+    let center = (board_size as f32 / 2.0).ceil();
+
+    for coordinate in &create_patterns_map()[initial_pattern] {
+        let x = (center + coordinate.x as f32 - 1.0) as usize;
+        let y = (center + coordinate.y as f32 - 1.0) as usize;
+        board[y][x] = true;
+    }
+
+    return board;
+}
+
+fn draw_board(board: &Board) {
+    for row in board.iter() {
+        for &cell in row.iter() {
+            print!("{}", if cell { "O" } else { " " });
         }
         println!();
     }
-}
-
-fn set_initial_state(board: Board) -> Board {
-    let mut new_board = board.clone();
-    new_board[2][1].alive = true;
-    new_board[2][2].alive = true;
-    new_board[2][3].alive = true;
-    return new_board;
 }
